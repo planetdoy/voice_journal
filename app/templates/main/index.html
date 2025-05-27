@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}홈{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">음성 파일 변환</h2>
+                <a href="{{ url_for('main.history') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-history"></i> 변환 이력 보기
+                </a>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-microphone-alt fa-3x text-primary mb-3"></i>
+                        <h4>음성 파일을 텍스트로 변환하세요</h4>
+                        <p class="text-muted">MP3, WAV, M4A, OGG 형식의 음성 파일을 지원합니다.</p>
+                    </div>
+                    <form id="uploadForm" method="POST" action="{{ url_for('main.upload_file') }}" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <div class="upload-area p-4 border rounded text-center" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                                <h5>파일을 드래그하거나 클릭하여 업로드</h5>
+                                <p class="text-muted small">최대 파일 크기: 16MB</p>
+                                <input type="file" class="d-none" id="file" name="file" accept=".mp3,.wav,.m4a,.ogg" required>
+                                <button type="button" class="btn btn-outline-primary mt-2" onclick="document.getElementById('file').click()">
+                                    파일 선택
+                                </button>
+                            </div>
+                            <div id="selectedFile" class="mt-2 d-none">
+                                <div class="alert alert-info d-flex align-items-center">
+                                    <i class="fas fa-file-audio me-2"></i>
+                                    <span id="fileName"></span>
+                                    <button type="button" class="btn-close ms-auto" onclick="clearFile()"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5" id="convertBtn" disabled>
+                                <i class="fas fa-exchange-alt me-2"></i>변환하기
+                            </button>
+                        </div>
+                    </form>
+                    <div class="progress mt-4" style="height: 25px; display:none;" id="progressWrapper">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">
+                            <span class="progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+.progress {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-weight: 500;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('file');
+    const selectedFile = document.getElementById('selectedFile');
+    const fileName = document.getElementById('fileName');
+    const convertBtn = document.getElementById('convertBtn');
+
+    // 드래그 앤 드롭 이벤트 처리
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#0d6efd';
+        uploadArea.style.backgroundColor = '#f8f9fa';
+    });
+
+    uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#dee2e6';
+        uploadArea.style.backgroundColor = '';
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#dee2e6';
+        uploadArea.style.backgroundColor = '';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    });
+
+    // 파일 선택 이벤트 처리
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    function handleFile(file) {
+        const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('지원하지 않는 파일 형식입니다. MP3, WAV, M4A, OGG 파일만 업로드 가능합니다.');
+            return;
+        }
+
+        if (file.size > 16 * 1024 * 1024) {
+            alert('파일 크기는 16MB를 초과할 수 없습니다.');
+            return;
+        }
+
+        fileName.textContent = file.name;
+        selectedFile.classList.remove('d-none');
+        convertBtn.disabled = false;
+    }
+
+    window.clearFile = function() {
+        fileInput.value = '';
+        selectedFile.classList.add('d-none');
+        convertBtn.disabled = true;
+    };
+
+    // 파일 업로드 처리
+    document.getElementById('uploadForm').onsubmit = function(e) {
+        e.preventDefault();
+        var form = e.target;
+        var data = new FormData(form);
+        var xhr = new XMLHttpRequest();
+        var progressBar = document.getElementById('progressBar');
+        var progressWrapper = document.getElementById('progressWrapper');
+        var progressText = progressBar.querySelector('.progress-text');
+        
+        progressWrapper.style.display = 'block';
+        convertBtn.disabled = true;
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                var percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressText.textContent = percent + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status == 200) {
+                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                progressBar.classList.add('bg-success');
+                progressText.textContent = '변환 완료!';
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("main.history") }}';
+                }, 1000);
+            } else {
+                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                progressText.textContent = '변환 실패';
+                convertBtn.disabled = false;
+            }
+        };
+
+        xhr.open('POST', form.action, true);
+        xhr.send(data);
+    };
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}변환 이력{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">변환 이력</h2>
+                <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 새 변환하기
+                </a>
+            </div>
+
+            <!-- 기간 필터 -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="btn-group me-3">
+                            <button type="button" class="btn btn-outline-primary active" data-period="week">
+                                <i class="fas fa-calendar-week"></i> 주간
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-period="month">
+                                <i class="fas fa-calendar-alt"></i> 월간
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-period="year">
+                                <i class="fas fa-calendar"></i> 연간
+                            </button>
+                        </div>
+                        <div class="period-selector d-none">
+                            <select class="form-select" id="periodSelect">
+                                <!-- JavaScript로 동적 생성 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if conversions %}
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="conversionList">
+                        {% for conversion in conversions %}
+                        <div class="list-group-item p-4" 
+                             data-year="{{ conversion.created_at.strftime('%Y') }}"
+                             data-month="{{ conversion.created_at.strftime('%m') }}"
+                             data-date="{{ conversion.created_at.strftime('%Y-%m-%d') }}">
+                            <div class="d-flex w-100 justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="mb-1">
+                                        <span class="conversion-title" data-conversion-id="{{ conversion.id }}">
+                                            {{ conversion.title or '제목 없음' }}
+                                        </span>
+                                    </h5>
+                                    <small class="text-muted">
+                                        <i class="far fa-clock"></i> {{ conversion.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <button class="dropdown-item edit-title-btn"
+                                                    data-conversion-id="{{ conversion.id }}"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editTitleModal">
+                                                <i class="fas fa-heading"></i> 제목 수정
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item edit-text-btn"
+                                                    data-conversion-id="{{ conversion.id }}"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editTextModal">
+                                                <i class="fas fa-edit"></i> 텍스트 수정
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form action="{{ url_for('main.delete_conversion', conversion_id=conversion.id) }}" method="POST">
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="fas fa-trash-alt"></i> 삭제
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="conversion-text mb-3" data-conversion-id="{{ conversion.id }}">
+                                {{ conversion.text }}
+                            </div>
+                            
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-info me-2">
+                                    <i class="fas fa-language"></i> {{ conversion.language }}
+                                </span>
+                                <audio controls class="flex-grow-1">
+                                    {% set file_ext = conversion.original_filename.split('.')[-1].lower() %}
+                                    {% if file_ext == 'mp3' %}
+                                        <source src="{{ url_for('main.uploaded_file', filename=conversion.original_filename) }}" type="audio/mpeg">
+                                    {% elif file_ext == 'wav' %}
+                                        <source src="{{ url_for('main.uploaded_file', filename=conversion.original_filename) }}" type="audio/wav">
+                                    {% elif file_ext == 'm4a' %}
+                                        <source src="{{ url_for('main.uploaded_file', filename=conversion.original_filename) }}" type="audio/mp4">
+                                    {% elif file_ext == 'ogg' %}
+                                        <source src="{{ url_for('main.uploaded_file', filename=conversion.original_filename) }}" type="audio/ogg">
+                                    {% endif %}
+                                    브라우저가 오디오 재생을 지원하지 않습니다.
+                                </audio>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow-sm">
+                <div class="card-body text-center p-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">아직 변환된 파일이 없습니다</h4>
+                    <p class="text-muted">음성 파일을 텍스트로 변환해보세요.</p>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus"></i> 새 변환하기
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 제목 수정 모달 -->
+<div class="modal fade" id="editTitleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> 제목 수정
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTitleForm">
+                    <input type="hidden" id="editTitleConversionId" name="conversion_id">
+                    <div class="mb-3">
+                        <label for="editTitleInput" class="form-label">제목</label>
+                        <input type="text" class="form-control" id="editTitleInput" name="title" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="saveTitleBtn">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 텍스트 수정 모달 -->
+<div class="modal fade" id="editTextModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> 텍스트 수정
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTextForm">
+                    <input type="hidden" id="editTextConversionId" name="conversion_id">
+                    <div class="mb-3">
+                        <label for="editTextInput" class="form-label">텍스트</label>
+                        <textarea class="form-control" id="editTextInput" name="text" rows="10" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="saveTextBtn">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.audio-controls {
+    width: 100%;
+}
+
+.dropdown-item {
+    cursor: pointer;
+}
+
+.dropdown-item i {
+    width: 20px;
+}
+
+.period-selector {
+    min-width: 200px;
+}
+
+.btn-group .btn {
+    min-width: 100px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 기간 필터 관련 변수
+    const periodButtons = document.querySelectorAll('[data-period]');
+    const periodSelector = document.querySelector('.period-selector');
+    const periodSelect = document.getElementById('periodSelect');
+    const conversionList = document.getElementById('conversionList');
+    let currentPeriod = 'week';
+
+    // 기간 버튼 클릭 이벤트
+    periodButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            periodButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            currentPeriod = this.dataset.period;
+            updatePeriodSelector();
+            filterConversions();
+        });
+    });
+
+    // 기간 선택기 업데이트
+    function updatePeriodSelector() {
+        const now = new Date();
+        let options = [];
+        
+        switch(currentPeriod) {
+            case 'week':
+                for (let i = 0; i < 4; i++) {
+                    const date = new Date(now);
+                    date.setDate(date.getDate() - (i * 7));
+                    const weekStart = new Date(date);
+                    weekStart.setDate(date.getDate() - date.getDay());
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    options.push({
+                        value: weekStart.toISOString().split('T')[0],
+                        label: `${weekStart.toLocaleDateString()} ~ ${weekEnd.toLocaleDateString()}`
+                    });
+                }
+                break;
+            case 'month':
+                for (let i = 0; i < 12; i++) {
+                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    options.push({
+                        value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+                        label: `${date.getFullYear()}년 ${date.getMonth() + 1}월`
+                    });
+                }
+                break;
+            case 'year':
+                for (let i = 0; i < 5; i++) {
+                    const year = now.getFullYear() - i;
+                    options.push({
+                        value: `${year}`,
+                        label: `${year}년`
+                    });
+                }
+                break;
+        }
+
+        periodSelect.innerHTML = options.map(opt => 
+            `<option value="${opt.value}">${opt.label}</option>`
+        ).join('');
+
+        periodSelector.classList.remove('d-none');
+        filterConversions();
+    }
+
+    // 변환 목록 필터링
+    function filterConversions() {
+        const selectedValue = periodSelect.value;
+        const items = conversionList.querySelectorAll('.list-group-item');
+        
+        items.forEach(item => {
+            let show = false;
+
+            switch(currentPeriod) {
+                case 'week':
+                    const selectedDate = new Date(selectedValue);
+                    const weekEnd = new Date(selectedDate);
+                    weekEnd.setDate(selectedDate.getDate() + 6);
+                    const itemDate = new Date(item.dataset.date);
+                    show = itemDate >= selectedDate && itemDate <= weekEnd;
+                    break;
+                case 'month':
+                    const [selectedYear, selectedMonth] = selectedValue.split('-');
+                    show = item.dataset.year === selectedYear && 
+                           item.dataset.month === selectedMonth;
+                    break;
+                case 'year':
+                    show = item.dataset.year === selectedValue;
+                    break;
+            }
+
+            item.style.display = show ? '' : 'none';
+        });
+    }
+
+    // 기간 선택 변경 이벤트
+    periodSelect.addEventListener('change', filterConversions);
+
+    // 초기 기간 선택기 설정
+    updatePeriodSelector();
+
+    // 제목 수정 버튼 클릭 이벤트
+    document.querySelectorAll('.edit-title-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const conversionId = this.dataset.conversionId;
+            const title = document.querySelector(`.conversion-title[data-conversion-id="${conversionId}"]`).textContent;
+            document.getElementById('editTitleConversionId').value = conversionId;
+            document.getElementById('editTitleInput').value = title;
+        });
+    });
+
+    // 텍스트 수정 버튼 클릭 이벤트
+    document.querySelectorAll('.edit-text-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const conversionId = this.dataset.conversionId;
+            const text = document.querySelector(`.conversion-text[data-conversion-id="${conversionId}"]`).textContent;
+            document.getElementById('editTextConversionId').value = conversionId;
+            document.getElementById('editTextInput').value = text;
+        });
+    });
+
+    // 제목 저장 버튼 클릭 이벤트
+    document.getElementById('saveTitleBtn').addEventListener('click', function() {
+        const form = document.getElementById('editTitleForm');
+        const formData = new FormData(form);
+        const title = formData.get('title').trim();
+        formData.set('title', title);
+        
+        fetch('{{ url_for("main.update_title") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const conversionId = formData.get('conversion_id');
+                document.querySelector(`.conversion-title[data-conversion-id="${conversionId}"]`).textContent = title;
+                bootstrap.Modal.getInstance(document.getElementById('editTitleModal')).hide();
+            } else {
+                alert('제목 수정에 실패했습니다.');
+            }
+        });
+    });
+
+    // 텍스트 저장 버튼 클릭 이벤트
+    document.getElementById('saveTextBtn').addEventListener('click', function() {
+        const form = document.getElementById('editTextForm');
+        const formData = new FormData(form);
+        const text = formData.get('text').trim();
+        formData.set('text', text);
+        
+        fetch('{{ url_for("main.update_text") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const conversionId = formData.get('conversion_id');
+                document.querySelector(`.conversion-text[data-conversion-id="${conversionId}"]`).textContent = text;
+                bootstrap.Modal.getInstance(document.getElementById('editTextModal')).hide();
+            } else {
+                alert('텍스트 수정에 실패했습니다.');
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>이메일 인증</title>
+</head>
+<body>
+    <h1>이메일 인증</h1>
+    <p>안녕하세요! 음성 변환 서비스에 가입해주셔서 감사합니다.</p>
+    <p>아래 링크를 클릭하여 이메일 인증을 완료해주세요:</p>
+    <p>
+        <a href="{{ url_for('auth.verify_email', token=token, _external=True) }}">
+            이메일 인증하기
+        </a>
+    </p>
+    <p>이 링크는 24시간 동안 유효합니다.</p>
+    <p>감사합니다.</p>
+</body>
+</html> 
