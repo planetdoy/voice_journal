@@ -23,7 +23,7 @@
 - Backend
   - Python 3.8+
   - Flask
-  - SQLite
+  - PostgreSQL
   - OpenAI Whisper
 - Frontend
   - HTML5
@@ -32,6 +32,7 @@
 - 기타
   - Flask-Mail (이메일 인증)
   - PyJWT (토큰 기반 인증)
+  - Gunicorn (WSGI 서버)
 
 ## 설치 방법
 
@@ -57,11 +58,14 @@ pip install -r requirements.txt
 `.env` 파일을 생성하고 다음 변수들을 설정합니다:
 ```
 SECRET_KEY=your_secret_key
+DATABASE_URL=postgresql://username:password@localhost:5432/voice_journal
 MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USE_TLS=True
 MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_app_password
+MAIL_DEFAULT_SENDER=your_email@gmail.com
+JWT_SECRET_KEY=your_jwt_secret_key
 ```
 
 5. 데이터베이스 초기화
@@ -71,8 +75,37 @@ flask db upgrade
 
 6. 애플리케이션 실행
 ```bash
+# 개발 환경
 python run.py
+
+# 프로덕션 환경
+gunicorn run:app
 ```
+
+## 배포 방법 (Render.com)
+
+1. Render.com 계정 생성 및 로그인
+
+2. PostgreSQL 데이터베이스 생성
+   - "New +" > "PostgreSQL" 선택
+   - 데이터베이스 설정
+   - 생성된 데이터베이스 URL 복사
+
+3. 웹 서비스 생성
+   - "New +" > "Web Service" 선택
+   - GitHub 저장소 연결
+   - 다음 설정으로 구성:
+     - Name: voice-journal
+     - Environment: Python
+     - Build Command: `pip install -r requirements.txt`
+     - Start Command: `gunicorn run:app`
+     - Plan: Free
+
+4. 환경 변수 설정
+   - DATABASE_URL: PostgreSQL 데이터베이스 URL
+   - 기타 필요한 환경 변수 설정
+
+5. 배포 완료 후 자동으로 서비스 시작
 
 ## 사용 방법
 
