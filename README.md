@@ -1,82 +1,102 @@
-# MVP 프로젝트
+# Voice Journal
 
-이 프로젝트는 FastAPI와 SQLAlchemy를 사용한 백엔드 API 서버입니다.
+음성 파일을 텍스트로 변환하여 일기처럼 기록할 수 있는 웹 애플리케이션입니다.
+
+## 주요 기능
+
+- 음성 파일 업로드 및 텍스트 변환
+  - 지원 형식: MP3, WAV, M4A, OGG
+  - 최대 파일 크기: 16MB
+- 사용자 인증 시스템
+  - 회원가입 및 로그인
+  - 이메일 인증
+  - 비밀번호 재설정
+- 변환 이력 관리
+  - 변환된 텍스트 저장
+  - 이력 조회 및 삭제
+- 일일 사용량 제한
+  - 무료 사용자: 하루 3회
+  - 프리미엄 사용자: 하루 10회
 
 ## 기술 스택
 
-- Python 3.8+
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- Alembic (데이터베이스 마이그레이션)
+- Backend
+  - Python 3.8+
+  - Flask
+  - SQLite
+  - OpenAI Whisper
+- Frontend
+  - HTML5
+  - CSS3 (Bootstrap 5)
+  - JavaScript
+- 기타
+  - Flask-Mail (이메일 인증)
+  - PyJWT (토큰 기반 인증)
 
-## 시작하기
+## 설치 방법
 
-### 필수 요구사항
-
-- Python 3.8 이상
-- PostgreSQL 데이터베이스
-
-### 설치 방법
-
-1. 저장소를 클론합니다:
+1. 저장소 클론
 ```bash
-git clone [repository-url]
-cd mvp
+git clone https://github.com/planetdoy/voice_journal.git
+cd voice_journal
 ```
 
-2. 가상환경을 생성하고 활성화합니다:
+2. 가상환경 생성 및 활성화
 ```bash
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# 또는
-.\venv\Scripts\activate  # Windows
+venv\Scripts\activate     # Windows
 ```
 
-3. 필요한 패키지를 설치합니다:
+3. 의존성 설치
 ```bash
 pip install -r requirements.txt
 ```
 
-4. 환경 변수 설정:
+4. 환경 변수 설정
 `.env` 파일을 생성하고 다음 변수들을 설정합니다:
 ```
-DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+SECRET_KEY=your_secret_key
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your_email@gmail.com
+MAIL_PASSWORD=your_app_password
 ```
 
-5. 데이터베이스 마이그레이션:
+5. 데이터베이스 초기화
 ```bash
-alembic upgrade head
+flask db upgrade
 ```
 
-6. 서버 실행:
+6. 애플리케이션 실행
 ```bash
-uvicorn app.main:app --reload
+python run.py
 ```
 
-서버가 실행되면 `http://localhost:8000`에서 API에 접근할 수 있습니다.
+## 사용 방법
 
-## API 문서
+1. 회원가입 및 로그인
+   - 이메일 인증이 필요합니다
+   - 비밀번호를 잊어버린 경우 재설정 가능
 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+2. 음성 파일 업로드
+   - 드래그 앤 드롭 또는 파일 선택
+   - 지원되는 형식: MP3, WAV, M4A, OGG
+   - 최대 파일 크기: 16MB
 
-## 프로젝트 구조
-
-```
-mvp/
-├── alembic/              # 데이터베이스 마이그레이션
-├── app/
-│   ├── api/             # API 엔드포인트
-│   ├── core/            # 핵심 설정
-│   ├── models/          # 데이터베이스 모델
-│   └── schemas/         # Pydantic 스키마
-├── tests/               # 테스트 파일
-├── .env                 # 환경 변수
-├── requirements.txt     # 프로젝트 의존성
-└── README.md           # 프로젝트 문서
-```
+3. 변환 결과 확인
+   - 변환이 완료되면 자동으로 이력 페이지로 이동
+   - 변환된 텍스트 확인 및 관리
 
 ## 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 
+MIT License
+
+## 기여 방법
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request 
