@@ -11,6 +11,8 @@ PyJWT==2.3.0
 openai-whisper==20231117
 psycopg2-binary==2.9.5
 gunicorn==21.2.0
+setuptools>=65.5.1
+wheel>=0.38.0
 Flask-Login==0.6.3
 Flask-Mail==0.9.1
 Flask-WTF==1.2.1
