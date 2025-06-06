@@ -44,10 +44,11 @@
                             </button>
                         </div>
                     </form>
-                    <div class="progress mt-4" style="height: 25px; display:none;" id="progressWrapper">
-                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">
-                            <span class="progress-text">0%</span>
+                    <div class="text-center mt-4" id="loadingSpinner" style="display:none;">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">변환 중...</span>
                         </div>
+                        <p class="mt-2 text-muted">음성 파일을 텍스트로 변환하는 중입니다...</p>
                     </div>
                 </div>
             </div>
@@ -89,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedFile = document.getElementById('selectedFile');
     const fileName = document.getElementById('fileName');
     const convertBtn = document.getElementById('convertBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
 
     // 드래그 앤 드롭 이벤트 처리
     uploadArea.addEventListener('dragover', (e) => {
@@ -122,8 +124,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function handleFile(file) {
-        const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg'];
-        if (!allowedTypes.includes(file.type)) {
+        const allowedExtensions = ['.mp3', '.wav', '.m4a', '.ogg'];
+        const fileName = file.name.toLowerCase();
+        const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+        
+        if (!hasValidExtension) {
             alert('지원하지 않는 파일 형식입니다. MP3, WAV, M4A, OGG 파일만 업로드 가능합니다.');
             return;
         }
@@ -150,35 +155,27 @@ document.addEventListener('DOMContentLoaded', function() {
         var form = e.target;
         var data = new FormData(form);
         var xhr = new XMLHttpRequest();
-        var progressBar = document.getElementById('progressBar');
-        var progressWrapper = document.getElementById('progressWrapper');
-        var progressText = progressBar.querySelector('.progress-text');
         
-        progressWrapper.style.display = 'block';
+        loadingSpinner.style.display = 'block';
         convertBtn.disabled = true;
-
-        xhr.upload.onprogress = function(e) {
-            if (e.lengthComputable) {
-                var percent = Math.round((e.loaded / e.total) * 100);
-                progressBar.style.width = percent + '%';
-                progressText.textContent = percent + '%';
-            }
-        };
 
         xhr.onload = function() {
             if (xhr.status == 200) {
-                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-                progressBar.classList.add('bg-success');
-                progressText.textContent = '변환 완료!';
+                loadingSpinner.style.display = 'none';
                 setTimeout(() => {
                     window.location.href = '{{ url_for("main.history") }}';
                 }, 1000);
             } else {
-                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-                progressBar.classList.add('bg-danger');
-                progressText.textContent = '변환 실패';
+                loadingSpinner.style.display = 'none';
+                alert('변환 중 오류가 발생했습니다.');
                 convertBtn.disabled = false;
             }
+        };
+
+        xhr.onerror = function() {
+            loadingSpinner.style.display = 'none';
+            alert('서버와의 통신 중 오류가 발생했습니다.');
+            convertBtn.disabled = false;
         };
 
         xhr.open('POST', form.action, true);

@@ -102,10 +102,15 @@ def reset_password(token):
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     
-    # 토큰 검증 로직 구현 필요
+    user = User.verify_reset_password_token(token)
+    if not user:
+        flash('유효하지 않거나 만료된 비밀번호 재설정 링크입니다.', 'error')
+        return redirect(url_for('auth.reset_password_request'))
+    
     form = ResetPasswordForm()
     if form.validate_on_submit():
-        # 비밀번호 재설정 로직 구현 필요
+        user.set_password(form.password.data)
+        db.session.commit()
         flash('비밀번호가 재설정되었습니다.', 'success')
         return redirect(url_for('auth.login'))
     
