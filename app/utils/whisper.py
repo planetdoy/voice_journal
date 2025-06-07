@@ -1,13 +1,15 @@
-import whisper
 import os
-import numpy as np
+import requests
 from datetime import datetime
-import torch
+import time
+import logging
+from flask import current_app
+
+logger = logging.getLogger(__name__)
 
 def transcribe_audio(file_path):
     """
-    오디오 파일을 텍스트로 변환합니다.
-    청크 단위로 처리하여 메모리 사용량을 최적화합니다.
+    OpenAI Whisper API를 사용하여 오디오 파일을 텍스트로 변환합니다.
     
     Args:
         file_path (str): 변환할 오디오 파일의 경로
@@ -19,49 +21,55 @@ def transcribe_audio(file_path):
             - language: 감지된 언어
     """
     try:
-        # Whisper tiny 모델 로드 (메모리 사용량 최소화)
-        model = whisper.load_model("tiny")
+        # OpenAI API 키 확인
+        api_key = current_app.config['OPENAI_API_KEY']
+        logger.info(f"API 키 존재 여부: {'있음' if api_key else '없음'}")
         
-        # 오디오 파일을 청크로 나누어 처리
-        audio = whisper.load_audio(file_path)
-        
-        # 30초 단위로 청크 분할
-        chunk_length = 30 * 16000  # 30초 * 16000Hz
-        chunks = [audio[i:i + chunk_length] for i in range(0, len(audio), chunk_length)]
-        
-        # 각 청크 처리
-        all_text = []
-        all_segments = []
-        
-        for i, chunk in enumerate(chunks):
-            # 청크 패딩
-            chunk = whisper.pad_or_trim(chunk)
-            
-            # 변환 실행
-            result = model.transcribe(chunk)
-            
-            # 결과 저장
-            all_text.append(result['text'])
-            
-            # 세그먼트 시간 조정
-            for segment in result['segments']:
-                segment['start'] += i * 30
-                segment['end'] += i * 30
-                all_segments.append(segment)
-            
-            # 메모리 해제
-            del chunk
-            torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        
-        return {
-            'text': ' '.join(all_text),
-            'segments': all_segments,
-            'language': result['language']
+        if not api_key:
+            logger.error("OPENAI_API_KEY가 설정되지 않았습니다.")
+            raise Exception("OPENAI_API_KEY가 설정되지 않았습니다.")
+
+        # 파일 크기 확인 (25MB 제한)
+        file_size = os.path.getsize(file_path)
+        logger.info(f"파일 크기: {file_size / (1024*1024):.2f}MB")
+        if file_size > 25 * 1024 * 1024:  # 25MB
+            logger.error(f"파일 크기가 25MB를 초과합니다: {file_size / (1024*1024):.2f}MB")
+            raise Exception("파일 크기가 25MB를 초과합니다.")
+
+        # 파일 업로드
+        headers = {
+            "Authorization": f"Bearer {api_key}"
         }
+        
+        logger.info("OpenAI API 호출 시작...")
+        with open(file_path, "rb") as audio_file:
+            files = {
+                "file": (os.path.basename(file_path), audio_file, "audio/mpeg"),
+                "model": (None, "whisper-1"),
+                "language": (None, "ko"),
+                "response_format": (None, "verbose_json")
+            }
+            
+            response = requests.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers=headers,
+                files=files
+            )
+            
+            logger.info(f"API 응답 상태 코드: {response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"API 호출 실패: {response.text}")
+                raise Exception(f"API 호출 실패: {response.text}")
+
+            result = response.json()
+            logger.info("변환 완료")
+            
+            return {
+                'text': result['text'],
+                'segments': result['segments'],
+                'language': result['language']
+            }
+            
     except Exception as e:
-        raise Exception(f"음성 변환 중 오류가 발생했습니다: {str(e)}")
-    finally:
-        # 메모리 정리
-        if 'model' in locals():
-            del model
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None 
+        logger.error(f"음성 변환 중 오류 발생: {str(e)}")
+        raise Exception(f"음성 변환 중 오류가 발생했습니다: {str(e)}") 

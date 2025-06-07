@@ -15,6 +15,9 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')
     
+    # OpenAI API 설정
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    
     # 파일 업로드 설정
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')

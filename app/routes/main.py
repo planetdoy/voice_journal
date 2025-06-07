@@ -7,6 +7,9 @@ from app.models.conversion import Conversion
 from app.models.daily_usage import DailyUsage as DailyUsageModel
 from app.utils.whisper import transcribe_audio
 from app import db
+import logging
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('main', __name__)
 
@@ -24,18 +27,29 @@ def index():
 @bp.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
+    logger.info("파일 업로드 요청 받음")
+    
     if 'file' not in request.files:
-        flash('파일이 선택되지 않았습니다.', 'error')
-        return redirect(url_for('main.index'))
+        logger.error("파일이 없음")
+        return jsonify({
+            'success': False,
+            'message': '파일이 없습니다.'
+        })
     
     file = request.files['file']
     if file.filename == '':
-        flash('파일이 선택되지 않았습니다.', 'error')
-        return redirect(url_for('main.index'))
+        logger.error("선택된 파일이 없음")
+        return jsonify({
+            'success': False,
+            'message': '선택된 파일이 없습니다.'
+        })
     
     if not allowed_file(file.filename):
-        flash('지원하지 않는 파일 형식입니다.', 'error')
-        return redirect(url_for('main.index'))
+        logger.error("허용되지 않은 파일 형식")
+        return jsonify({
+            'success': False,
+            'message': '허용되지 않은 파일 형식입니다.'
+        })
     
     try:
         # 오늘의 사용량 확인
@@ -53,8 +67,11 @@ def upload_file():
             daily_usage.count = 0
         
         if daily_usage.count >= 5:  # 일일 5회 제한
-            flash('일일 변환 횟수를 초과했습니다.', 'error')
-            return redirect(url_for('main.index'))
+            logger.error("일일 사용량 초과")
+            return jsonify({
+                'success': False,
+                'message': '일일 변환 횟수를 초과했습니다.'
+            })
         
         # 파일 저장
         filename = secure_filename(file.filename)
@@ -62,9 +79,12 @@ def upload_file():
         saved_filename = f"{timestamp}_{filename}"
         file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], saved_filename)
         file.save(file_path)
+        logger.info(f"파일 저장 완료: {file_path}")
         
         # 음성 변환
+        logger.info("음성 변환 시작")
         result = transcribe_audio(file_path)
+        logger.info("음성 변환 완료")
         
         # 변환 결과 저장
         conversion = Conversion(
@@ -79,14 +99,20 @@ def upload_file():
         daily_usage.count += 1
         
         db.session.commit()
+        logger.info("변환 결과 저장 완료")
         
-        flash('파일이 성공적으로 변환되었습니다.', 'success')
-        return redirect(url_for('main.index'))
+        return jsonify({
+            'success': True,
+            'message': '파일이 성공적으로 변환되었습니다.'
+        })
         
     except Exception as e:
+        logger.error(f"변환 중 오류 발생: {str(e)}")
         db.session.rollback()
-        flash(f'변환 중 오류가 발생했습니다: {str(e)}', 'error')
-        return redirect(url_for('main.index'))
+        return jsonify({
+            'success': False,
+            'message': f'변환 중 오류가 발생했습니다: {str(e)}'
+        })
 
 @bp.route('/uploads/<filename>')
 def uploaded_file(filename):
